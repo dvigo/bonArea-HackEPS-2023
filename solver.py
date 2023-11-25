@@ -1,6 +1,19 @@
 import csv
 
 from tsp import solve_tsp_with_or_tools
+from datetime import datetime, timedelta
+
+class OutputRow:
+    def __init__(self, customer_id, ticket_id, x, y, picking, x_y_date_time):
+        self.customer_id = customer_id
+        self.ticket_id = ticket_id
+        self.x = x
+        self.y = y
+        self.picking = picking
+        self.x_y_date_time = x_y_date_time
+
+    def __repr__(self):
+        return f"{self.customer_id};{self.ticket_id};{self.x};{self.y};{self.picking};{self.x_y_date_time}"
 
 class Planogram:
     def __init__(self, x, y, picking_x, picking_y, description):
@@ -153,9 +166,7 @@ def build_distance_matrix_for_end(all_pairs_shortest_paths, locations, start, en
                 # print(point1, point2, i, j, start, end)
                 # Retrieve the distance from the all_pairs_shortest_paths and assign it to the matrix
                 distance_matrix[i][j] = len(all_pairs_shortest_paths[point1][point2]) - 1  # Subtract 1 for path length
-    start_index = points.index(start)
-    end_index = points.index(end)
-    return distance_matrix, start_index, end_index
+    return distance_matrix, points
 
 def find_optimal_route_with_ends(customers_product_locations, planogram_data):
     best_routes = {}
@@ -164,24 +175,31 @@ def find_optimal_route_with_ends(customers_product_locations, planogram_data):
         all_pairs_shortest_paths, start, ends = compute_all_pairs_shortest_paths(planogram_data, locations)
 
         best_route = None
+        pick_at_steps = None
         best_route_length = float('inf')
 
         for end in ends:
             # Create a modified distance matrix for this end
             print(start, end)
-            distance_matrix, index_start, index_end = build_distance_matrix_for_end(all_pairs_shortest_paths, locations, start, end)
+            distance_matrix, points = build_distance_matrix_for_end(all_pairs_shortest_paths, locations, start, end)
+            start_index = points.index(start)
+            end_index = points.index(end)
 
-            tsp_route = solve_tsp_with_or_tools(distance_matrix, index_start, index_end)
+            tsp_route = solve_tsp_with_or_tools(distance_matrix, start_index, end_index)
             route_length = calculate_route_length(tsp_route, distance_matrix)
 
             # Check if this route is better
             if route_length < best_route_length:
-                best_route = tsp_route
+                best_route = [
+                    points[i] for i in tsp_route
+                ]
+                best_route, pick_at_steps = reconstruct_full_path(best_route, all_pairs_shortest_paths)
                 best_route_length = route_length
                 # print(f'New best route for Customer {customer_id}:', best_route, best_route_length)
 
-        best_routes[customer_id] = best_route
-
+        best_routes[customer_id] = best_route, pick_at_steps
+        if len(best_routes) == 10:
+            return best_routes # debug
     return best_routes
 
 # Additional function to calculate the total length of a route
@@ -228,24 +246,83 @@ def main():
     customers_product_locations = get_product_locations(tickets, planogram_data)
 
     best_routes = find_optimal_route_with_ends(customers_product_locations, planogram_data)
+    output_rows = generate_output_rows(best_routes, customer_properties, articles_picking_time, tickets, planogram_data)
+
+    # Write the output to a file
+    with open('data/output_good.csv', 'w') as file:
+        file.write('customer_id;ticket_id;x;y;picking;x_y_date_time\n')
+        for row in output_rows:
+            file.write(str(row) + '\n')
+
+from datetime import datetime, timedelta
+
+def parse_datetime(datetime_str):
+    # Assuming the datetime string format is known, e.g., '2023-11-02 09:29:00'
+    # Adjust the format accordingly if it's different
+    return datetime.strptime(datetime_str, '%Y-%m-%d %H:%M:%S')
+
+
+def generate_output_rows(best_routes, customer_properties: [CustomerProperties], articles_picking_time: [ArticlePickingTime], tickets, planogram_data):
+    output_rows = []
+
+    for customer_id, (path, pick_at_steps) in best_routes.items():
+        # Find the customer's properties and ticket info
+        customer_prop = next((cp for cp in customer_properties if cp.customer_id == customer_id), None)
+        customer_tickets = [t for t in tickets if t.customer_id == customer_id]
+
+        # Initialize the start time from the ticket entry time
+        current_time = min(parse_datetime(ticket.enter_date_time) for ticket in customer_tickets)
+
+        for i, (x, y) in enumerate(path):
+            # Check if the current position is a picking location and identify the item
+            picking = 0
+            time_at_position = 0
+
+            if i in pick_at_steps:
+                # User is picking an item at this position
+                picking = 1
+                article_id = next((p.description for p in planogram_data if p.picking_x == x and p.picking_y == y), None)
+                article_pick_time = next((apt for apt in articles_picking_time if apt.article_id == article_id), None)
+                
+                if article_pick_time:
+                    # Adjust time at position based on the number of items picked
+                    quantity = next((ticket.quantity for ticket in customer_tickets if ticket.article_id == article_id), 1)
+                    time_at_position += sum([article_pick_time.first_pick, 
+                                             *(article_pick_time.second_pick for _ in range(1, min(quantity, 2))),
+                                             *(article_pick_time.third_pick for _ in range(2, min(quantity, 3))),
+                                             *(article_pick_time.fourth_pick for _ in range(3, min(quantity, 4))),
+                                             *(article_pick_time.fifth_more_pick for _ in range(4, quantity))])
+            else:
+                # User is moving to this position
+                time_at_position = customer_prop.step_seconds
+
+            # Create an OutputRow for each second spent at the current position
+            for _ in range(time_at_position):
+                output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, x, y, picking, current_time))
+                current_time += timedelta(seconds=1)
+
+    # Sort the rows by x_y_date_time
+    output_rows.sort(key=lambda row: row.x_y_date_time)
+    return output_rows
 
 def reconstruct_full_path(tsp_route, all_pairs_shortest_paths):
-    full_path = []
+    full_path = [
+        tsp_route[0]
+    ]
+    pick_at_steps = []
     for i in range(len(tsp_route) - 1):
         start_point = tsp_route[i]
         end_point = tsp_route[i + 1]
 
         # Retrieve the path between start_point and end_point
-        path_segment = all_pairs_shortest_paths[start_point][end_point]
+        path_segment = all_pairs_shortest_paths[start_point][end_point][::-1]
         
         # Add the path segment to the full path
         # Exclude the last point to avoid duplicates with the next segment
-        full_path.extend(path_segment[:-1])
+        full_path.extend(path_segment)
+        pick_at_steps.append(len(path_segment) - 1)
 
-    # Add the last point of the last segment
-    full_path.append(tsp_route[-1])
-
-    return full_path
+    return full_path, pick_at_steps
 
 
 
