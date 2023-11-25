@@ -145,7 +145,7 @@ async function drawRoute(locationRoute, color) {
                 return;
             }
             
-            if (point.picking == '1') pick(point.x, point.y); else cleanLastPick();
+            if (point.picking == '1') pick(point.x, point.y, color); else cleanLastPick();
             ctxIconCustomer.drawImage(img, point.x, point.y, DIM, DIM);
 
             await sleep(speedValue);
@@ -200,35 +200,21 @@ function drawSquare(x, y, color, shadow = false) {
     ctxSquare.lineCap = 'square';
 
     if (shadow) {
-        // Draw the square with a fill color that matches the background for shadow
-        ctxSquare.fillStyle = 'backgroundColor'; // Replace with your actual background color
-        ctxSquare.shadowColor = color;
-        ctxSquare.shadowBlur = 15;
-        ctxSquare.shadowOffsetX = 5; // Adjust as needed
-        ctxSquare.shadowOffsetY = 5; // Adjust as needed
-        ctxSquare.fillRect(x, y, DIM, DIM);
-
-        // Reset shadow settings and draw the border
-        ctxSquare.shadowColor = 'transparent';
-        ctxSquare.shadowBlur = 0;
-        ctxSquare.shadowOffsetX = 0;
-        ctxSquare.shadowOffsetY = 0;
-
-        ctxSquare.strokeStyle = color;
-        ctxSquare.strokeRect(x, y, DIM, DIM);
-
-        ctxSquare.clearRect(x, y, DIM, DIM);
-    } else {
-        // Normal filled square without shadow
-        ctxSquare.shadowColor = 'transparent';
-        ctxSquare.shadowBlur = 0;
-        ctxSquare.shadowOffsetX = 0;
-        ctxSquare.shadowOffsetY = 0;    
-        ctxSquare.fillStyle = color;
-        ctxSquare.fillRect(x, y, DIM, DIM);
+        // Create a slightly tinted color by adjusting the alpha value
+        color = hexToRGBA(color, 0.7); // 0.7 is the alpha value, adjust as needed for the tint effect
     }
+    ctxSquare.fillStyle = color;
+    ctxSquare.fillRect(x, y, DIM, DIM);
 }
 
+// Helper function to convert hex color to RGBA
+function hexToRGBA(hex, alpha) {
+    let r = parseInt(hex.slice(1, 3), 16);
+    let g = parseInt(hex.slice(3, 5), 16);
+    let b = parseInt(hex.slice(5, 7), 16);
+
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 /**
  * Generates a new different color.
@@ -354,7 +340,7 @@ function importCSVData(route) {
   }
 
 
-function pick(x, y) {
+function pick(x, y, color) {
     x = (x / DIM) + 1;
     y = (y / DIM) + 1;
     let row = csvData.filter((row) => {
@@ -364,7 +350,8 @@ function pick(x, y) {
     var dx = (row[0].x - 1) * DIM;
     var dy = (row[0].y - 1) * DIM;
     lastPick = [dx, dy];
-    drawSquare(dx, dy, 'rgba(0, 0, 0, 0.2)', true);
+    console.log(color);
+    drawSquare(dx, dy, color, true);
 }
 
 function csvJSON(csv) {
@@ -388,7 +375,7 @@ function csvJSON(csv) {
 
 function cleanLastPick() {
     if (lastPick.length > 0) {
-        drawSquare(lastPick[0], lastPick[1], 'transparent', false);
+        ctxSquare.clearRect(lastPick[0], lastPick[1], DIM, DIM);
         lastPick = [];
     }
 }
