@@ -173,6 +173,8 @@ def find_optimal_route_with_ends(customers_product_locations, planogram_data):
     for customer_id, locations in customers_product_locations.items():
         # Calculate shortest paths for all items and potential ends
         all_pairs_shortest_paths, start, ends = compute_all_pairs_shortest_paths(planogram_data, locations)
+        # print(all_pairs_shortest_paths)
+        # input('Debug distance matrix')
 
         best_route = None
         pick_at_steps = None
@@ -197,7 +199,7 @@ def find_optimal_route_with_ends(customers_product_locations, planogram_data):
                 # print(f'New best route for Customer {customer_id}:', best_route, best_route_length)
 
         best_routes[customer_id] = best_route, pick_at_steps
-    
+        return best_routes # TODO: Remove this line to run for all customers
     print('Number of customers:', len(best_routes))
     return best_routes
 
