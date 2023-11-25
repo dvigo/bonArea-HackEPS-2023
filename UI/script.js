@@ -7,6 +7,9 @@ const img = new Image();
 img.src = "img/marker_client.png";
 const imgCollition = new Image();
 imgCollition.src = "img/red_alert.svg";
+const pickPng = new Image();
+pickPng.src = "img/cart.png";
+
 
 const DIM = 40;
 
@@ -255,8 +258,8 @@ function drawSquare(x, y, color, shadow = false) {
     ctxSquare.lineCap = 'square';
 
     if (shadow) {
-        // Create a slightly tinted color by adjusting the alpha value
-        color = hexToRGBA(color, 0.7); // 0.7 is the alpha value, adjust as needed for the tint effect
+        ctxIconCollition.drawImage(pickPng, x, y, DIM, DIM);
+        color = hexToRGBA(color, 0.7);
     }
     ctxSquare.fillStyle = color;
     ctxSquare.fillRect(x, y, DIM, DIM);
