@@ -353,18 +353,19 @@ function getSharedAndCollitionLocations() {
     locationsCollition = [];
     locationsTotal.forEach((element, index) => {
         locationsTotal.forEach((loc, i) => {
-            const idList = loc.x.concat('U').concat(loc.y).concat('U').concat(loc.s);
-            if (element.x == loc.x && element.y == loc.y && element.s == loc.s && i != index) {
-                if (locationsCollition.indexOf(idList) == -1) locationsCollition.push(idList)
-            }
-            if (element.x == loc.x && element.y == loc.y && element.t != loc.t && i != index) {
+            if (element.x == loc.x && element.y == loc.y && i != index) {
                 const idList = loc.x.concat('U').concat(loc.y).concat('U').concat(loc.s);
-                if (locationsShared.has(idList)) {
-                    const newList = locationsShared.get(idList);
-                    newList.add(loc.t);
-                    locationsShared.set(idList, new Set(newList));
+                if (element.s == loc.s) {
+                    if (locationsCollition.indexOf(idList) == -1) locationsCollition.push(idList)
                 }
-                else { locationsShared.set(idList, new Set([loc.t])); }
+                if (element.t != loc.t) {
+                    if (locationsShared.has(idList)) {
+                        const newList = locationsShared.get(idList);
+                        newList.add(loc.t);
+                    }
+                    else { locationsShared.set(idList, new Set([loc.t])); }
+                }
+
             }
         });
     });
