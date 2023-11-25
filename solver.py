@@ -273,6 +273,7 @@ def generate_output_rows(best_routes, customer_properties: [CustomerProperties],
         customer_prop = next((cp for cp in customer_properties if cp.customer_id == customer_id), None)
         customer_tickets = [t for t in tickets if t.customer_id == customer_id]
 
+        total_quantity = sum(ticket.quantity for ticket in customer_tickets)
         # Initialize the start time from the ticket entry time
         current_time = min(parse_datetime(ticket.enter_date_time) for ticket in customer_tickets)
 
@@ -303,6 +304,13 @@ def generate_output_rows(best_routes, customer_properties: [CustomerProperties],
             for _ in range(time_at_position):
                 output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, x, y, picking, current_time))
                 current_time += timedelta(seconds=1)
+        x_checkout = x
+        y_checkout = y
+        time_checkout = total_quantity * 5 + customer_prop.step_seconds
+        for _ in range(time_checkout):
+            output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, x_checkout, y_checkout, 0, current_time))
+            current_time += timedelta(seconds=1)
+                
 
     # Sort the rows by x_y_date_time
     output_rows.sort(key=lambda row: row.x_y_date_time)
