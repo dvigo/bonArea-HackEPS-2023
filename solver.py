@@ -112,17 +112,18 @@ def compute_all_pairs_shortest_paths(planogram_data, product_locations):
     grid_width = max([item.x for item in planogram_data]) + 1
     grid_height = max([item.y for item in planogram_data]) + 1
     grid = [[0 for _ in range(grid_height)] for _ in range(grid_width)]
-    start = None
+    start_p = None
     ends = []
     for item in planogram_data:
-        if item.description != 'paso':
+        if item.description not in ['paso', 'paso-entrada', 'paso-salida']:
             grid[item.x][item.y] = 1
+
         if item.description == 'paso-entrada':
-            start = (item.x, item.y)
+            start_p = (item.x, item.y)
         elif item.description == 'paso-salida':
             ends.append((item.x, item.y))
     
-    product_locations = [start] + product_locations + ends
+    product_locations = [start_p] + product_locations + ends
 
     all_pairs_shortest_paths = {}
     for start in product_locations:
@@ -135,25 +136,59 @@ def compute_all_pairs_shortest_paths(planogram_data, product_locations):
                     raise Exception("No path found from {} to {}".format(start, goal))
                 all_pairs_shortest_paths[start][goal] = path
 
-    return all_pairs_shortest_paths, start, ends
+    return all_pairs_shortest_paths, start_p, ends
 
-def build_distance_matrix(all_pairs_shortest_paths, product_locations):
-    # Initialize the distance matrix with zeros
-    n = len(product_locations)
+def build_distance_matrix_for_end(all_pairs_shortest_paths, locations, start, end):
+    # Include start and end in the list of points
+    points = [start] + locations + [end]
+
+    # Initialize the distance matrix
+    n = len(points)
     distance_matrix = [[0 for _ in range(n)] for _ in range(n)]
 
-    # Map each product location to an index
-    location_to_index = {loc: index for index, loc in enumerate(product_locations)}
+    # Populate the distance matrix
+    for i, point1 in enumerate(points):
+        for j, point2 in enumerate(points):
+            if i != j:
+                # print(point1, point2, i, j, start, end)
+                # Retrieve the distance from the all_pairs_shortest_paths and assign it to the matrix
+                distance_matrix[i][j] = len(all_pairs_shortest_paths[point1][point2]) - 1  # Subtract 1 for path length
+    start_index = points.index(start)
+    end_index = points.index(end)
+    return distance_matrix, start_index, end_index
 
-    # Fill the distance matrix
-    for start_location, paths in all_pairs_shortest_paths.items():
-        start_index = location_to_index[start_location]
-        for end_location, path in paths.items():
-            end_index = location_to_index[end_location]
-            # The distance is the length of the path minus 1 (as the path includes both start and end)
-            distance_matrix[start_index][end_index] = len(path) - 1
+def find_optimal_route_with_ends(customers_product_locations, planogram_data):
+    for customer_id, locations in customers_product_locations.items():
+        # Calculate shortest paths for all items and potential ends
+        all_pairs_shortest_paths, start, ends = compute_all_pairs_shortest_paths(planogram_data, locations)
 
-    return distance_matrix
+        best_route = None
+        best_route_length = float('inf')
+
+        for end in ends:
+            # Create a modified distance matrix for this end
+            print(start, end)
+            distance_matrix, index_start, index_end = build_distance_matrix_for_end(all_pairs_shortest_paths, locations, start, end)
+
+            tsp_route = solve_tsp_with_or_tools(distance_matrix, index_start, index_end)
+            route_length = calculate_route_length(tsp_route, distance_matrix)
+
+            # Check if this route is better
+            if route_length < best_route_length:
+                best_route = tsp_route
+                best_route_length = route_length
+                # print(f'New best route for Customer {customer_id}:', best_route, best_route_length)
+
+        print(f'Best TSP Route for Customer {customer_id}:', best_route)
+        return  # debug
+
+# Additional function to calculate the total length of a route
+def calculate_route_length(route, distance_matrix):
+    total_length = 0
+    for i in range(len(route) - 1):
+        total_length += distance_matrix[route[i]][route[i + 1]]
+    return total_length
+
 
 def main():
     # Base directory for data files
@@ -190,16 +225,7 @@ def main():
 
     customers_product_locations = get_product_locations(tickets, planogram_data)
 
-    # Calculate shortest paths
-    for customer_id, locations in customers_product_locations.items():
-        all_pairs_shortest_paths, start, ends = compute_all_pairs_shortest_paths(planogram_data, locations)
-        distance_matrix = build_distance_matrix(all_pairs_shortest_paths, locations)
-        
-        # Assuming you have a distance_matrix from the previous steps
-        tsp_route = solve_tsp_with_or_tools(distance_matrix)
-        print('TSP Route:', tsp_route)
-        break
-
+    find_optimal_route_with_ends(customers_product_locations, planogram_data)
 
 
 
