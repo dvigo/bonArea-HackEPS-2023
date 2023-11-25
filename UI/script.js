@@ -10,6 +10,13 @@ imgCollition.src = "img/red_alert.svg";
 
 const DIM = 40;
 
+const states = [
+    '⚪&nbsp;&nbsp;Pendiente',
+    '🔴&nbsp;&nbsp;En espera',
+    '🔵&nbsp;&nbsp;En ruta',
+    '🟢&nbsp;&nbsp;Completado'
+];
+
 let tickets;
 let customerColor = new Map();
 let customerTickets = new Map();
@@ -23,13 +30,29 @@ let cw = canvas.width = container.offsetWidth;
 let ch = canvas.height = container.offsetHeight;
 
 let lastPick = [];
+let currentTime = 0;
+
+function until(conditionFunction) {
+
+    const poll = resolve => {
+      if(conditionFunction()) resolve();
+      else setTimeout(_ => poll(resolve), 100);
+    }
+  
+    return new Promise(poll);
+}
 
 document.getElementById('filePicker').addEventListener('change', readFile, false);
 document.getElementById('speed_text').innerHTML = "Velocidad Actual: " + speedText;
 
 const planogramFile = 'http://127.0.0.1:8000/data/planogram_table.csv';
+const ticketsFile = 'http://127.0.0.1:8000/data/hackathon_tickets.csv';
 let csvData = null;
+let ticketsTableData = null;
+let tableData = [];
+
 importCSVData(planogramFile).then(data => { csvData = data; });
+importCSVData(ticketsFile).then(data => { ticketsTableData = data; createTable();});
 
 /**
  * Read CSV file 
@@ -61,7 +84,7 @@ function getDataOfFile(contents) {
         let [customer_id, ticket_id, x, y, picking, x_y_date_time] = breakLine[i].split(';');
         var index = dataCSV.findIndex((element) => element[0] === customer_id);
         if (index === -1) {
-            const sec = epochConverter(x_y_date_time, shopOpeningTime)
+            const sec = epochConverter(x_y_date_time, shopOpeningTime);
             if (tickets.has(ticket_id)) {
                 const locationsList = tickets.get(ticket_id);
                 locationsList.push({ x, y, sec, ticket_id, picking });
@@ -70,10 +93,12 @@ function getDataOfFile(contents) {
             else { tickets.set(ticket_id, [{ x, y, sec, ticket_id, picking }]); }
             if(ticket_id)locationsTotal.push({ x: x, y: y, s: sec, t: ticket_id });
         }
+        setState(ticket_id, 1);
 
     }
     getSharedAndCollitionLocations();
     calculateFirstcustomerSec();
+    updateTime();
 }
 
 /**
@@ -88,7 +113,7 @@ function calcWaypoints(locations) {
         var pt = locations[i];
         var dx = (pt.x - 1) * DIM;
         var dy = (pt.y - 1) * DIM;
-        waypoints.push({ x: dx, y: dy, s: pt.sec, t: (time + i), picking: pt.picking});
+        waypoints.push({ x: dx, y: dy, s: pt.sec, t: (time + i), picking: pt.picking, ticket_id: pt.ticket_id});
     }
     return (waypoints);
 }
@@ -102,7 +127,15 @@ async function calculateFirstcustomerSec() {
         customerTickets.set(color, key)
         customerColor.set(key, color)
         value = sortRouteByTime(value);
-        const firstSecond = (+value[0].sec) * speedValue;
+        tickets.set(key, value);
+        const firstSecond = (+value[0].sec);
+        const lastSecond = (+value[value.length - 1].sec);
+        const duration = lastSecond - firstSecond;
+        setDuration(key, duration);
+    }
+    for (let [key, value] of tickets) {
+        const color = customerColor.get(key);
+        let firstSecond = (+value[0].sec);
         const locations = calcWaypoints(value);
         await drawRouteAfterSeconds(locations, firstSecond, color);
     }
@@ -113,11 +146,14 @@ async function calculateFirstcustomerSec() {
  * @param firstSecond customer first second
  * @param color HEX color value
  */
-function drawRouteAfterSeconds(locations, firstSecond, color) {
-    setTimeout(() => {
-        drawRoute(locations, color);
-    }, firstSecond);
+async function drawRouteAfterSeconds(locations, firstSecond, color) {
+    console.log(currentTime);
+    console.log(firstSecond);
+    await until(() => { return currentTime >= firstSecond; });
+    console.log(currentTime >= firstSecond);
+    drawRoute(locations, color);
 }
+
 /**
  * Draw the customers route, with its image, and the color assigned to it. 
  * @param locationRoute customer list of locations points 
@@ -127,13 +163,17 @@ async function drawRoute(locationRoute, color) {
     const locRoute = locationRoute;
     let collition = false
     for (let point of locRoute) {
+        drawSquare(point.x, point.y, hexToRGB(color, 0.02));
+    }
+    setState(locationRoute[0].ticket_id, 2);
+    for (let point of locRoute) {
         for (let loc of locationsCollition) {
             const x = ((+loc.split('U')[0]) - 1) * DIM
             const y = ((+loc.split('U')[1]) - 1) * DIM
             const s = ((+loc.split('U')[2]))
             if (point.s == s && point.x == x && point.y == y) {
                 drawSquare(point.x, point.y, color);
-                await sleep(speedValue);
+                await until(() => { return currentTime >= point.s; });
                 drawLocationsCollition(x, y)
                 collition = true
                 continue
@@ -148,13 +188,14 @@ async function drawRoute(locationRoute, color) {
             if (point.picking == '1') pick(point.x, point.y, color); else cleanLastPick(color);
             ctxIconCustomer.drawImage(img, point.x, point.y, DIM, DIM);
 
-            await sleep(speedValue);
+            await until(() => { return currentTime >= point.s; });
             drawSquare(point.x, point.y, color);
 
         } collition = false
     }
     await sleep((speedValue / 2));
     clearRoute(locRoute, color);
+    setState(locationRoute[0].ticket_id, 3);
 
 }
 
@@ -333,9 +374,6 @@ function importCSVData(route) {
     .then(response => response.text())
     .then(data => {
       return csvJSON(data);
-    })
-    .catch(error => {
-      console.error('Error:', error);
     });
   }
 
@@ -350,7 +388,6 @@ function pick(x, y, color) {
     var dx = (row[0].x - 1) * DIM;
     var dy = (row[0].y - 1) * DIM;
     lastPick[color] = [dx, dy];
-    console.log(color);
     drawSquare(dx, dy, color, true);
 }
 
@@ -378,4 +415,88 @@ function cleanLastPick(color) {
         ctxSquare.clearRect(lastPick[color][0], lastPick[color][1], DIM, DIM);
         lastPick[color] = [];
     }
+}
+
+function hexToRGB(hex, alpha) {
+    var r = parseInt(hex.slice(1, 3), 16),
+        g = parseInt(hex.slice(3, 5), 16),
+        b = parseInt(hex.slice(5, 7), 16);
+
+    if (alpha) {
+        return "rgba(" + r + ", " + g + ", " + b + ", " + alpha + ")";
+    } else {
+        return "rgb(" + r + ", " + g + ", " + b + ")";
+    }
+}
+
+async function updateTime() {
+    let id = "current-time";
+    let element = document.getElementById(id);
+    let d = new Date(0);
+    d.setHours(9 + 1); // +1 due to timezone
+    d.setMinutes(0);
+    d.setSeconds(0);
+    Date.prototype.addSeconds = function(s) {
+        this.setSeconds(this.getSeconds() + s);
+        return this;
+    };
+
+    for(let i = 0; i < Infinity; i++) {
+        currentTime += 1;
+        d.addSeconds(1);
+        element.innerHTML = "Tiempo actual: " + currentTime + " - " + d.toISOString().substr(11, 8);
+        
+        await sleep(speedValue);
+    }
+}
+
+function createTable() {
+    for (let ticket in ticketsTableData) {
+        let oldTicket = tableData.filter((row) => {
+            return row.ticketsNre == ticketsTableData[ticket].ticket_id;
+        });
+        if (oldTicket.length > 0) {
+            oldTicket[0].productNre += parseInt(ticketsTableData[ticket].quantity);
+            continue;
+        }
+        tableData.push({
+            state: states[0],
+            customer: ticketsTableData[ticket].customer_id,
+            start: ticketsTableData[ticket].enter_date_time,
+            finish: ticketsTableData[ticket].enter_date_time,
+            duration: ticketsTableData[ticket].enter_date_time,
+            ticketsNre: ticketsTableData[ticket].ticket_id,
+            productNre: parseInt(ticketsTableData[ticket].quantity)
+        });
+    }
+
+    setDataTable(tableData);
+}
+
+function setState(ticket_id, state) {
+    for( let i = 0; i < tableData.length; i++){
+        if ( tableData[i].ticketsNre === ticket_id) {
+            tableData[i].state = states[state];
+            break;
+        }
+    }
+    setDataTable(tableData);
+}
+
+function setDuration(ticket_id, time) {
+    console.log(ticket_id, time);
+    for( let i = 0; i < tableData.length; i++){
+        if ( tableData[i].ticketsNre === ticket_id) {
+            tableData[i].duration = time;
+            break;
+        }
+    }
+    setDataTable(tableData);
+}
+
+function setDataTable(tableData) {
+    customElements.whenDefined('random-data-table').then(() => {
+        const dataTable = document.querySelector('random-data-table');
+        dataTable.setData(tableData);
+    });
 }
