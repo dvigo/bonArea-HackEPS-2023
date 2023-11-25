@@ -197,7 +197,8 @@ def find_optimal_route_with_ends(customers_product_locations, planogram_data):
                 best_route, pick_at_steps = reconstruct_full_path(best_route, all_pairs_shortest_paths)
                 best_route_length = route_length
                 # print(f'New best route for Customer {customer_id}:', best_route, best_route_length)
-
+        print(f'Best route for Customer {customer_id}:', best_route, best_route_length)
+        print('Pick at steps:', pick_at_steps)
         best_routes[customer_id] = best_route, pick_at_steps
         return best_routes # TODO: Remove this line to run for all customers
     print('Number of customers:', len(best_routes))
@@ -321,7 +322,7 @@ def reconstruct_full_path(tsp_route, all_pairs_shortest_paths):
         # Add the path segment to the full path
         # Exclude the last point to avoid duplicates with the next segment
         full_path.extend(path_segment)
-        pick_at_steps.append(len(path_segment) - 1)
+        pick_at_steps.append(len(full_path) - 1)
 
     return full_path, pick_at_steps
 
