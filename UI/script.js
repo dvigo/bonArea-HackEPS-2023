@@ -145,7 +145,7 @@ async function drawRoute(locationRoute, color) {
                 return;
             }
             
-            if (point.picking == '1') pick(point.x, point.y, color); else cleanLastPick();
+            if (point.picking == '1') pick(point.x, point.y, color); else cleanLastPick(color);
             ctxIconCustomer.drawImage(img, point.x, point.y, DIM, DIM);
 
             await sleep(speedValue);
@@ -349,7 +349,7 @@ function pick(x, y, color) {
     
     var dx = (row[0].x - 1) * DIM;
     var dy = (row[0].y - 1) * DIM;
-    lastPick = [dx, dy];
+    lastPick[color] = [dx, dy];
     console.log(color);
     drawSquare(dx, dy, color, true);
 }
@@ -373,9 +373,9 @@ function csvJSON(csv) {
     return result
 }
 
-function cleanLastPick() {
-    if (lastPick.length > 0) {
-        ctxSquare.clearRect(lastPick[0], lastPick[1], DIM, DIM);
-        lastPick = [];
+function cleanLastPick(color) {
+    if (color in lastPick && lastPick[color].length > 0) {
+        ctxSquare.clearRect(lastPick[color][0], lastPick[color][1], DIM, DIM);
+        lastPick[color] = [];
     }
 }
