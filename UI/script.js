@@ -168,6 +168,7 @@ async function drawRoute(locationRoute, color) {
         drawSquare(point.x, point.y, hexToRGB(color, 0.02));
     }
     setState(locationRoute[0].ticket_id, 2);
+    updateDataTable();
     for (let point of locRoute) {
         for (let loc of locationsCollition) {
             const x = ((+loc.split('U')[0]) - 1) * DIM
@@ -199,6 +200,7 @@ async function drawRoute(locationRoute, color) {
     await sleep((speedValue / 2));
     clearRoute(locRoute, color);
     setState(locationRoute[0].ticket_id, 3);
+    updateDataTable();
 
 }
 
