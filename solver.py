@@ -158,6 +158,7 @@ def build_distance_matrix_for_end(all_pairs_shortest_paths, locations, start, en
     return distance_matrix, start_index, end_index
 
 def find_optimal_route_with_ends(customers_product_locations, planogram_data):
+    best_routes = {}
     for customer_id, locations in customers_product_locations.items():
         # Calculate shortest paths for all items and potential ends
         all_pairs_shortest_paths, start, ends = compute_all_pairs_shortest_paths(planogram_data, locations)
@@ -179,8 +180,9 @@ def find_optimal_route_with_ends(customers_product_locations, planogram_data):
                 best_route_length = route_length
                 # print(f'New best route for Customer {customer_id}:', best_route, best_route_length)
 
-        print(f'Best TSP Route for Customer {customer_id}:', best_route)
-        return  # debug
+        best_routes[customer_id] = best_route
+
+    return best_routes
 
 # Additional function to calculate the total length of a route
 def calculate_route_length(route, distance_matrix):
@@ -225,7 +227,25 @@ def main():
 
     customers_product_locations = get_product_locations(tickets, planogram_data)
 
-    find_optimal_route_with_ends(customers_product_locations, planogram_data)
+    best_routes = find_optimal_route_with_ends(customers_product_locations, planogram_data)
+
+def reconstruct_full_path(tsp_route, all_pairs_shortest_paths):
+    full_path = []
+    for i in range(len(tsp_route) - 1):
+        start_point = tsp_route[i]
+        end_point = tsp_route[i + 1]
+
+        # Retrieve the path between start_point and end_point
+        path_segment = all_pairs_shortest_paths[start_point][end_point]
+        
+        # Add the path segment to the full path
+        # Exclude the last point to avoid duplicates with the next segment
+        full_path.extend(path_segment[:-1])
+
+    # Add the last point of the last segment
+    full_path.append(tsp_route[-1])
+
+    return full_path
 
 
 
