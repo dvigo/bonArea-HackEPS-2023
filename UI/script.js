@@ -96,6 +96,7 @@ function getDataOfFile(contents) {
         setState(ticket_id, 1);
 
     }
+    updateDataTable();
     getSharedAndCollitionLocations();
     calculateFirstcustomerSec();
     updateTime();
@@ -133,6 +134,7 @@ async function calculateFirstcustomerSec() {
         const duration = lastSecond - firstSecond;
         setDuration(key, duration);
     }
+    updateDataTable();
     for (let [key, value] of tickets) {
         const color = customerColor.get(key);
         let firstSecond = (+value[0].sec);
@@ -480,7 +482,6 @@ function setState(ticket_id, state) {
             break;
         }
     }
-    setDataTable(tableData);
 }
 
 function setDuration(ticket_id, time) {
@@ -491,6 +492,9 @@ function setDuration(ticket_id, time) {
             break;
         }
     }
+}
+
+function updateDataTable() {
     setDataTable(tableData);
 }
 
