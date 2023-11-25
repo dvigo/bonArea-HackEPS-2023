@@ -23,6 +23,17 @@ let cw = canvas.width = container.offsetWidth;
 let ch = canvas.height = container.offsetHeight;
 
 let lastPick = [];
+let currentTime = 0;
+
+function until(conditionFunction) {
+
+    const poll = resolve => {
+      if(conditionFunction()) resolve();
+      else setTimeout(_ => poll(resolve), 100);
+    }
+  
+    return new Promise(poll);
+}
 
 document.getElementById('filePicker').addEventListener('change', readFile, false);
 document.getElementById('speed_text').innerHTML = "Velocidad Actual: " + speedText;
@@ -61,7 +72,7 @@ function getDataOfFile(contents) {
         let [customer_id, ticket_id, x, y, picking, x_y_date_time] = breakLine[i].split(';');
         var index = dataCSV.findIndex((element) => element[0] === customer_id);
         if (index === -1) {
-            const sec = epochConverter(x_y_date_time, shopOpeningTime)
+            const sec = epochConverter(x_y_date_time, shopOpeningTime);
             if (tickets.has(ticket_id)) {
                 const locationsList = tickets.get(ticket_id);
                 locationsList.push({ x, y, sec, ticket_id, picking });
@@ -74,6 +85,7 @@ function getDataOfFile(contents) {
     }
     getSharedAndCollitionLocations();
     calculateFirstcustomerSec();
+    updateTime();
 }
 
 /**
@@ -102,7 +114,7 @@ async function calculateFirstcustomerSec() {
         customerTickets.set(color, key)
         customerColor.set(key, color)
         value = sortRouteByTime(value);
-        const firstSecond = (+value[0].sec) * speedValue;
+        const firstSecond = (+value[0].sec);
         const locations = calcWaypoints(value);
         await drawRouteAfterSeconds(locations, firstSecond, color);
     }
@@ -113,10 +125,12 @@ async function calculateFirstcustomerSec() {
  * @param firstSecond customer first second
  * @param color HEX color value
  */
-function drawRouteAfterSeconds(locations, firstSecond, color) {
-    setTimeout(() => {
-        drawRoute(locations, color);
-    }, firstSecond);
+async function drawRouteAfterSeconds(locations, firstSecond, color) {
+    console.log(currentTime);
+    console.log(firstSecond);
+    await until(() => { return currentTime >= firstSecond; });
+    console.log(currentTime >= firstSecond);
+    drawRoute(locations, color);
 }
 
 /**
@@ -137,7 +151,7 @@ async function drawRoute(locationRoute, color) {
             const s = ((+loc.split('U')[2]))
             if (point.s == s && point.x == x && point.y == y) {
                 drawSquare(point.x, point.y, color);
-                await sleep(speedValue);
+                await until(() => { return currentTime >= point.s; });
                 drawLocationsCollition(x, y)
                 collition = true
                 continue
@@ -152,7 +166,7 @@ async function drawRoute(locationRoute, color) {
             if (point.picking == '1') pick(point.x, point.y, color); else cleanLastPick(color);
             ctxIconCustomer.drawImage(img, point.x, point.y, DIM, DIM);
 
-            await sleep(speedValue);
+            await until(() => { return currentTime >= point.s; });
             drawSquare(point.x, point.y, color);
 
         } collition = false
@@ -354,7 +368,6 @@ function pick(x, y, color) {
     var dx = (row[0].x - 1) * DIM;
     var dy = (row[0].y - 1) * DIM;
     lastPick[color] = [dx, dy];
-    console.log(color);
     drawSquare(dx, dy, color, true);
 }
 
@@ -393,5 +406,26 @@ function hexToRGB(hex, alpha) {
         return "rgba(" + r + ", " + g + ", " + b + ", " + alpha + ")";
     } else {
         return "rgb(" + r + ", " + g + ", " + b + ")";
+    }
+}
+
+async function updateTime() {
+    let id = "current-time";
+    let element = document.getElementById(id);
+    let d = new Date(0);
+    d.setHours(9 + 1); // +1 due to timezone
+    d.setMinutes(0);
+    d.setSeconds(0);
+    Date.prototype.addSeconds = function(s) {
+        this.setSeconds(this.getSeconds() + s);
+        return this;
+    };
+
+    for(let i = 0; i < Infinity; i++) {
+        currentTime += 1;
+        d.addSeconds(1);
+        element.innerHTML = "Tiempo actual: " + currentTime + " - " + d.toISOString().substr(11, 8);
+        
+        await sleep(speedValue);
     }
 }
