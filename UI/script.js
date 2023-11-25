@@ -118,6 +118,7 @@ function drawRouteAfterSeconds(locations, firstSecond, color) {
         drawRoute(locations, color);
     }, firstSecond);
 }
+
 /**
  * Draw the customers route, with its image, and the color assigned to it. 
  * @param locationRoute customer list of locations points 
@@ -126,6 +127,9 @@ function drawRouteAfterSeconds(locations, firstSecond, color) {
 async function drawRoute(locationRoute, color) {
     const locRoute = locationRoute;
     let collition = false
+    for (let point of locRoute) {
+        drawSquare(point.x, point.y, hexToRGB(color, 0.02));
+    }
     for (let point of locRoute) {
         for (let loc of locationsCollition) {
             const x = ((+loc.split('U')[0]) - 1) * DIM
@@ -377,5 +381,17 @@ function cleanLastPick(color) {
     if (color in lastPick && lastPick[color].length > 0) {
         ctxSquare.clearRect(lastPick[color][0], lastPick[color][1], DIM, DIM);
         lastPick[color] = [];
+    }
+}
+
+function hexToRGB(hex, alpha) {
+    var r = parseInt(hex.slice(1, 3), 16),
+        g = parseInt(hex.slice(3, 5), 16),
+        b = parseInt(hex.slice(5, 7), 16);
+
+    if (alpha) {
+        return "rgba(" + r + ", " + g + ", " + b + ", " + alpha + ")";
+    } else {
+        return "rgb(" + r + ", " + g + ", " + b + ")";
     }
 }
