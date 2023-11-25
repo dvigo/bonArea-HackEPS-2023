@@ -170,6 +170,10 @@ def build_distance_matrix_for_end(all_pairs_shortest_paths, locations, start, en
 
 def find_optimal_route_with_ends(customers_product_locations, planogram_data):
     best_routes = {}
+    c9 = customers_product_locations['c9']
+    customers_product_locations = {
+        'c9': c9,
+    }
     for customer_id, locations in customers_product_locations.items():
         # Calculate shortest paths for all items and potential ends
         all_pairs_shortest_paths, start, ends = compute_all_pairs_shortest_paths(planogram_data, locations)
