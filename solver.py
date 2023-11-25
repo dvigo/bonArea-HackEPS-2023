@@ -180,7 +180,6 @@ def find_optimal_route_with_ends(customers_product_locations, planogram_data):
 
         for end in ends:
             # Create a modified distance matrix for this end
-            print(start, end)
             distance_matrix, points = build_distance_matrix_for_end(all_pairs_shortest_paths, locations, start, end)
             start_index = points.index(start)
             end_index = points.index(end)
@@ -198,8 +197,8 @@ def find_optimal_route_with_ends(customers_product_locations, planogram_data):
                 # print(f'New best route for Customer {customer_id}:', best_route, best_route_length)
 
         best_routes[customer_id] = best_route, pick_at_steps
-        if len(best_routes) == 10:
-            return best_routes # debug
+    
+    print('Number of customers:', len(best_routes))
     return best_routes
 
 # Additional function to calculate the total length of a route
