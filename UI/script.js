@@ -22,8 +22,14 @@ let speedValue = 1000;
 let cw = canvas.width = container.offsetWidth;
 let ch = canvas.height = container.offsetHeight;
 
+let lastPick = [];
+
 document.getElementById('filePicker').addEventListener('change', readFile, false);
 document.getElementById('speed_text').innerHTML = "Velocidad Actual: " + speedText;
+
+const planogramFile = 'http://127.0.0.1:8000/data/planogram_table.csv';
+let csvData = null;
+importCSVData(planogramFile).then(data => { csvData = data; });
 
 /**
  * Read CSV file 
@@ -58,10 +64,10 @@ function getDataOfFile(contents) {
             const sec = epochConverter(x_y_date_time, shopOpeningTime)
             if (tickets.has(ticket_id)) {
                 const locationsList = tickets.get(ticket_id);
-                locationsList.push({ x, y, sec, ticket_id });
+                locationsList.push({ x, y, sec, ticket_id, picking });
                 tickets.set(ticket_id, locationsList);
             }
-            else { tickets.set(ticket_id, [{ x, y, sec, ticket_id }]); }
+            else { tickets.set(ticket_id, [{ x, y, sec, ticket_id, picking }]); }
             if(ticket_id)locationsTotal.push({ x: x, y: y, s: sec, t: ticket_id });
         }
 
@@ -82,7 +88,7 @@ function calcWaypoints(locations) {
         var pt = locations[i];
         var dx = (pt.x - 1) * DIM;
         var dy = (pt.y - 1) * DIM;
-        waypoints.push({ x: dx, y: dy, s: pt.sec, t: (time + i) });
+        waypoints.push({ x: dx, y: dy, s: pt.sec, t: (time + i), picking: pt.picking});
     }
     return (waypoints);
 }
@@ -138,7 +144,8 @@ async function drawRoute(locationRoute, color) {
                 clearRoute(locRoute);
                 return;
             }
-            drawSquare(point.x, point.y, color);
+            
+            if (point.picking == '1') pick(point.x, point.y); else cleanLastPick();
             ctxIconCustomer.drawImage(img, point.x, point.y, DIM, DIM);
 
             await sleep(speedValue);
@@ -150,6 +157,7 @@ async function drawRoute(locationRoute, color) {
     clearRoute(locRoute, color);
 
 }
+
 /**
  * Deletes the points of the route, when the customer leaves the store 
  * @param locationRoute customer list of locations points 
@@ -188,11 +196,39 @@ function clearRoute(locationRoute, color) {
  * @param y y location
  * @param color HEX color value
  */
-function drawSquare(x, y, color) {
+function drawSquare(x, y, color, shadow = false) {
     ctxSquare.lineCap = 'square';
-    ctxSquare.fillStyle = color;
-    ctxSquare.fillRect(x, y, DIM, DIM);
+
+    if (shadow) {
+        // Draw the square with a fill color that matches the background for shadow
+        ctxSquare.fillStyle = 'backgroundColor'; // Replace with your actual background color
+        ctxSquare.shadowColor = color;
+        ctxSquare.shadowBlur = 15;
+        ctxSquare.shadowOffsetX = 5; // Adjust as needed
+        ctxSquare.shadowOffsetY = 5; // Adjust as needed
+        ctxSquare.fillRect(x, y, DIM, DIM);
+
+        // Reset shadow settings and draw the border
+        ctxSquare.shadowColor = 'transparent';
+        ctxSquare.shadowBlur = 0;
+        ctxSquare.shadowOffsetX = 0;
+        ctxSquare.shadowOffsetY = 0;
+
+        ctxSquare.strokeStyle = color;
+        ctxSquare.strokeRect(x, y, DIM, DIM);
+
+        ctxSquare.clearRect(x, y, DIM, DIM);
+    } else {
+        // Normal filled square without shadow
+        ctxSquare.shadowColor = 'transparent';
+        ctxSquare.shadowBlur = 0;
+        ctxSquare.shadowOffsetX = 0;
+        ctxSquare.shadowOffsetY = 0;    
+        ctxSquare.fillStyle = color;
+        ctxSquare.fillRect(x, y, DIM, DIM);
+    }
 }
+
 
 /**
  * Generates a new different color.
@@ -303,4 +339,56 @@ function getSharedAndCollitionLocations() {
             }
         });
     });
+}
+
+// Function to import CSV data
+function importCSVData(route) {
+    return fetch(route)
+    .then(response => response.text())
+    .then(data => {
+      return csvJSON(data);
+    })
+    .catch(error => {
+      console.error('Error:', error);
+    });
+  }
+
+
+function pick(x, y) {
+    x = (x / DIM) + 1;
+    y = (y / DIM) + 1;
+    let row = csvData.filter((row) => {
+        return row.picking_x == x && row.picking_y == y;
+    });
+    
+    var dx = (row[0].x - 1) * DIM;
+    var dy = (row[0].y - 1) * DIM;
+    lastPick = [dx, dy];
+    drawSquare(dx, dy, 'rgba(0, 0, 0, 0.2)', true);
+}
+
+function csvJSON(csv) {
+    const lines = csv.split('\r\n')
+    const result = []
+    const headers = lines[0].split(';')
+
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i])
+            continue
+        const obj = {}
+        const currentline = lines[i].split(';')
+
+        for (let j = 0; j < headers.length; j++) {
+            obj[headers[j]] = currentline[j]
+        }
+        result.push(obj)
+    }
+    return result
+}
+
+function cleanLastPick() {
+    if (lastPick.length > 0) {
+        drawSquare(lastPick[0], lastPick[1], 'transparent', false);
+        lastPick = [];
+    }
 }
