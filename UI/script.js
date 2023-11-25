@@ -10,6 +10,13 @@ imgCollition.src = "img/red_alert.svg";
 
 const DIM = 40;
 
+const states = [
+    '⚪&nbsp;&nbsp;Pendiente',
+    '🔴&nbsp;&nbsp;En espera',
+    '🔵&nbsp;&nbsp;En ruta',
+    '🟢&nbsp;&nbsp;Completado'
+];
+
 let tickets;
 let customerColor = new Map();
 let customerTickets = new Map();
@@ -39,8 +46,13 @@ document.getElementById('filePicker').addEventListener('change', readFile, false
 document.getElementById('speed_text').innerHTML = "Velocidad Actual: " + speedText;
 
 const planogramFile = 'http://127.0.0.1:8000/data/planogram_table.csv';
+const ticketsFile = 'http://127.0.0.1:8000/data/hackathon_tickets.csv';
 let csvData = null;
+let ticketsTableData = null;
+let tableData = [];
+
 importCSVData(planogramFile).then(data => { csvData = data; });
+importCSVData(ticketsFile).then(data => { ticketsTableData = data; createTable();});
 
 /**
  * Read CSV file 
@@ -81,6 +93,7 @@ function getDataOfFile(contents) {
             else { tickets.set(ticket_id, [{ x, y, sec, ticket_id, picking }]); }
             if(ticket_id)locationsTotal.push({ x: x, y: y, s: sec, t: ticket_id });
         }
+        setState(ticket_id, 1);
 
     }
     getSharedAndCollitionLocations();
@@ -100,7 +113,7 @@ function calcWaypoints(locations) {
         var pt = locations[i];
         var dx = (pt.x - 1) * DIM;
         var dy = (pt.y - 1) * DIM;
-        waypoints.push({ x: dx, y: dy, s: pt.sec, t: (time + i), picking: pt.picking});
+        waypoints.push({ x: dx, y: dy, s: pt.sec, t: (time + i), picking: pt.picking, ticket_id: pt.ticket_id});
     }
     return (waypoints);
 }
@@ -144,6 +157,7 @@ async function drawRoute(locationRoute, color) {
     for (let point of locRoute) {
         drawSquare(point.x, point.y, hexToRGB(color, 0.02));
     }
+    setState(locationRoute[0].ticket_id, 2);
     for (let point of locRoute) {
         for (let loc of locationsCollition) {
             const x = ((+loc.split('U')[0]) - 1) * DIM
@@ -173,6 +187,7 @@ async function drawRoute(locationRoute, color) {
     }
     await sleep((speedValue / 2));
     clearRoute(locRoute, color);
+    setState(locationRoute[0].ticket_id, 3);
 
 }
 
@@ -351,9 +366,6 @@ function importCSVData(route) {
     .then(response => response.text())
     .then(data => {
       return csvJSON(data);
-    })
-    .catch(error => {
-      console.error('Error:', error);
     });
   }
 
@@ -428,4 +440,44 @@ async function updateTime() {
         
         await sleep(speedValue);
     }
+}
+
+function createTable() {
+    for (let ticket in ticketsTableData) {
+        let oldTicket = tableData.filter((row) => {
+            return row.ticketsNre == ticketsTableData[ticket].ticket_id;
+        });
+        if (oldTicket.length > 0) {
+            oldTicket[0].productNre += parseInt(ticketsTableData[ticket].quantity);
+            continue;
+        }
+        tableData.push({
+            state: states[0],
+            customer: ticketsTableData[ticket].customer_id,
+            start: ticketsTableData[ticket].enter_date_time,
+            finish: ticketsTableData[ticket].enter_date_time,
+            duration: ticketsTableData[ticket].enter_date_time,
+            ticketsNre: ticketsTableData[ticket].ticket_id,
+            productNre: parseInt(ticketsTableData[ticket].quantity)
+        });
+    }
+
+    setDataTable(tableData);
+}
+
+function setState(ticket_id, state) {
+    for( let i = 0; i < tableData.length; i++){
+        if ( tableData[i].ticketsNre === ticket_id) {
+            tableData[i].state = states[state];
+            break;
+        }
+    }
+    setDataTable(tableData);
+}
+
+function setDataTable(tableData) {
+    customElements.whenDefined('random-data-table').then(() => {
+        const dataTable = document.querySelector('random-data-table');
+        dataTable.setData(tableData);
+    });
 }
