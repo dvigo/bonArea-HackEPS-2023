@@ -55,7 +55,7 @@ class RandomDataTable extends HTMLElement {
             <table><tr><th>Estado Ruta</th><th>Nº Cliente</th><th>Hora entrada</th><th>Hora salida</th><th>Duración</th><th>Nº Ticket</th><th>Cantidad Artículos</th></tr>`;
 
         this.data.forEach(row => {
-            tableHTML += `<tr><td>${row.state}</td><td>${row.customer}</td><td>${row.start}</td><td>${row.finish}</td><td>${row.duration}</td><td>${row.ticketsNre}</td><td>${row.productNre}</td></tr>`;
+            tableHTML += `<tr><td>${states[row.state]}</td><td>${row.customer}</td><td>${row.start}</td><td>${row.finish}</td><td>${row.duration}</td><td>${row.ticketsNre}</td><td>${row.productNre}</td></tr>`;
         });
 
         tableHTML += `</table>`;

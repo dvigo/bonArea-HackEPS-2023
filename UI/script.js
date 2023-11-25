@@ -7,6 +7,9 @@ const img = new Image();
 img.src = "img/marker_client.png";
 const imgCollition = new Image();
 imgCollition.src = "img/red_alert.svg";
+const pickPng = new Image();
+pickPng.src = "img/cart.png";
+
 
 const DIM = 40;
 
@@ -149,10 +152,7 @@ async function calculateFirstcustomerSec() {
  * @param color HEX color value
  */
 async function drawRouteAfterSeconds(locations, firstSecond, color) {
-    console.log(currentTime);
-    console.log(firstSecond);
     await until(() => { return currentTime >= firstSecond; });
-    console.log(currentTime >= firstSecond);
     drawRoute(locations, color);
 }
 
@@ -220,6 +220,18 @@ function clearRoute(locationRoute, color) {
         locationsShared.set(key, value);
 
     }
+    for (let loc of locationsTotal) {
+        if (loc.t != colorTicket) {
+            let oldTicket = tableData.filter((row) => {
+                return row.ticketsNre == loc.t;
+            });
+            if (oldTicket.length > 0 && oldTicket[0].state == 2) {
+                let x = ((+loc.x - 1) * DIM);
+                let y = ((+loc.y - 1) * DIM);
+                drawSquare(x, y, hexToRGB(customerColor.get(loc.t), 0.02));
+            }
+        }
+    }
     for (let [key, value] of locationsShared) {
         for (let ticket of value) {
             if (lastLocation.s > (+key.split('U')[2])) {
@@ -246,8 +258,8 @@ function drawSquare(x, y, color, shadow = false) {
     ctxSquare.lineCap = 'square';
 
     if (shadow) {
-        // Create a slightly tinted color by adjusting the alpha value
-        color = hexToRGBA(color, 0.7); // 0.7 is the alpha value, adjust as needed for the tint effect
+        ctxIconCollition.drawImage(pickPng, x, y, DIM, DIM);
+        color = hexToRGBA(color, 0.7);
     }
     ctxSquare.fillStyle = color;
     ctxSquare.fillRect(x, y, DIM, DIM);
@@ -466,7 +478,7 @@ function createTable() {
             continue;
         }
         tableData.push({
-            state: states[0],
+            state: 0,
             customer: ticketsTableData[ticket].customer_id,
             start: ticketsTableData[ticket].enter_date_time,
             finish: ' --- ',
@@ -482,7 +494,7 @@ function createTable() {
 function setState(ticket_id, state) {
     for( let i = 0; i < tableData.length; i++){
         if ( tableData[i].ticketsNre === ticket_id) {
-            tableData[i].state = states[state];
+            tableData[i].state = state;
             break;
         }
     }
