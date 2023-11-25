@@ -187,7 +187,8 @@ async function drawRoute(locationRoute, color) {
                 return;
             }
             
-            if (point.picking == '1') pick(point.x, point.y, color); else cleanLastPick(color);
+            cleanLastPick(color);
+            if (point.picking == '1') pick(point.x, point.y, color);
             ctxIconCustomer.drawImage(img, point.x, point.y, DIM, DIM);
 
             await until(() => { return currentTime >= point.s; });
