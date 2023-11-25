@@ -466,8 +466,8 @@ function createTable() {
             state: states[0],
             customer: ticketsTableData[ticket].customer_id,
             start: ticketsTableData[ticket].enter_date_time,
-            finish: ticketsTableData[ticket].enter_date_time,
-            duration: ticketsTableData[ticket].enter_date_time,
+            finish: ' --- ',
+            duration: ' --- ',
             ticketsNre: ticketsTableData[ticket].ticket_id,
             productNre: parseInt(ticketsTableData[ticket].quantity)
         });
@@ -486,10 +486,12 @@ function setState(ticket_id, state) {
 }
 
 function setDuration(ticket_id, time) {
-    console.log(ticket_id, time);
     for( let i = 0; i < tableData.length; i++){
         if ( tableData[i].ticketsNre === ticket_id) {
-            tableData[i].duration = time;
+            tableData[i].duration = convertSecondsToMinutesAndSeconds(time);
+            let exit = new Date(tableData[i].start);
+            exit.setSeconds(exit.getSeconds() + time);
+            tableData[i].finish = formatDateToCustomString(exit);
             break;
         }
     }
@@ -505,3 +507,21 @@ function setDataTable(tableData) {
         dataTable.setData(tableData);
     });
 }
+
+function formatDateToCustomString(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+  
+    const formattedString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    return formattedString;
+}
+
+function convertSecondsToMinutesAndSeconds(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes} min. ${remainingSeconds}s`;
+  }
