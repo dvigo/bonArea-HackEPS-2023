@@ -22,8 +22,14 @@ let speedValue = 1000;
 let cw = canvas.width = container.offsetWidth;
 let ch = canvas.height = container.offsetHeight;
 
+let lastPick = [];
+
 document.getElementById('filePicker').addEventListener('change', readFile, false);
 document.getElementById('speed_text').innerHTML = "Velocidad Actual: " + speedText;
+
+const planogramFile = 'http://127.0.0.1:8000/data/planogram_table.csv';
+let csvData = null;
+importCSVData(planogramFile).then(data => { csvData = data; });
 
 /**
  * Read CSV file 
@@ -58,10 +64,10 @@ function getDataOfFile(contents) {
             const sec = epochConverter(x_y_date_time, shopOpeningTime)
             if (tickets.has(ticket_id)) {
                 const locationsList = tickets.get(ticket_id);
-                locationsList.push({ x, y, sec, ticket_id });
+                locationsList.push({ x, y, sec, ticket_id, picking });
                 tickets.set(ticket_id, locationsList);
             }
-            else { tickets.set(ticket_id, [{ x, y, sec, ticket_id }]); }
+            else { tickets.set(ticket_id, [{ x, y, sec, ticket_id, picking }]); }
             if(ticket_id)locationsTotal.push({ x: x, y: y, s: sec, t: ticket_id });
         }
 
@@ -82,7 +88,7 @@ function calcWaypoints(locations) {
         var pt = locations[i];
         var dx = (pt.x - 1) * DIM;
         var dy = (pt.y - 1) * DIM;
-        waypoints.push({ x: dx, y: dy, s: pt.sec, t: (time + i) });
+        waypoints.push({ x: dx, y: dy, s: pt.sec, t: (time + i), picking: pt.picking});
     }
     return (waypoints);
 }
@@ -138,7 +144,8 @@ async function drawRoute(locationRoute, color) {
                 clearRoute(locRoute);
                 return;
             }
-            drawSquare(point.x, point.y, color);
+            
+            if (point.picking == '1') pick(point.x, point.y, color); else cleanLastPick(color);
             ctxIconCustomer.drawImage(img, point.x, point.y, DIM, DIM);
 
             await sleep(speedValue);
@@ -150,6 +157,7 @@ async function drawRoute(locationRoute, color) {
     clearRoute(locRoute, color);
 
 }
+
 /**
  * Deletes the points of the route, when the customer leaves the store 
  * @param locationRoute customer list of locations points 
@@ -188,10 +196,24 @@ function clearRoute(locationRoute, color) {
  * @param y y location
  * @param color HEX color value
  */
-function drawSquare(x, y, color) {
+function drawSquare(x, y, color, shadow = false) {
     ctxSquare.lineCap = 'square';
+
+    if (shadow) {
+        // Create a slightly tinted color by adjusting the alpha value
+        color = hexToRGBA(color, 0.7); // 0.7 is the alpha value, adjust as needed for the tint effect
+    }
     ctxSquare.fillStyle = color;
     ctxSquare.fillRect(x, y, DIM, DIM);
+}
+
+// Helper function to convert hex color to RGBA
+function hexToRGBA(hex, alpha) {
+    let r = parseInt(hex.slice(1, 3), 16);
+    let g = parseInt(hex.slice(3, 5), 16);
+    let b = parseInt(hex.slice(5, 7), 16);
+
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 /**
@@ -303,4 +325,57 @@ function getSharedAndCollitionLocations() {
             }
         });
     });
+}
+
+// Function to import CSV data
+function importCSVData(route) {
+    return fetch(route)
+    .then(response => response.text())
+    .then(data => {
+      return csvJSON(data);
+    })
+    .catch(error => {
+      console.error('Error:', error);
+    });
+  }
+
+
+function pick(x, y, color) {
+    x = (x / DIM) + 1;
+    y = (y / DIM) + 1;
+    let row = csvData.filter((row) => {
+        return row.picking_x == x && row.picking_y == y;
+    });
+    
+    var dx = (row[0].x - 1) * DIM;
+    var dy = (row[0].y - 1) * DIM;
+    lastPick[color] = [dx, dy];
+    console.log(color);
+    drawSquare(dx, dy, color, true);
+}
+
+function csvJSON(csv) {
+    const lines = csv.split('\r\n')
+    const result = []
+    const headers = lines[0].split(';')
+
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i])
+            continue
+        const obj = {}
+        const currentline = lines[i].split(';')
+
+        for (let j = 0; j < headers.length; j++) {
+            obj[headers[j]] = currentline[j]
+        }
+        result.push(obj)
+    }
+    return result
+}
+
+function cleanLastPick(color) {
+    if (color in lastPick && lastPick[color].length > 0) {
+        ctxSquare.clearRect(lastPick[color][0], lastPick[color][1], DIM, DIM);
+        lastPick[color] = [];
+    }
 }
