@@ -1,0 +1,208 @@
+import csv
+
+from tsp import solve_tsp_with_or_tools
+
+class Planogram:
+    def __init__(self, x, y, picking_x, picking_y, description):
+        self.x = x
+        self.y = y
+        self.picking_x = picking_x
+        self.picking_y = picking_y
+        self.description = description
+
+def parse_planogram(file_path):
+    planogram_data = []
+    with open(file_path, 'r') as file:
+        reader = csv.DictReader(file, delimiter=';')
+        for row in reader:
+            # print(row)
+            picking_x = int(row['picking_x']) if row['picking_x'] else None
+            picking_y = int(row['picking_y']) if row['picking_y'] else None
+
+            planogram_data.append(Planogram(int(row['x']), int(row['y']), 
+                                            picking_x, picking_y, 
+                                            row['description']))
+    return planogram_data
+
+class CustomerProperties:
+    def __init__(self, customer_id, step_seconds, picking_offset):
+        self.customer_id = customer_id
+        self.step_seconds = step_seconds
+        self.picking_offset = picking_offset
+
+def parse_customer_properties(file_path):
+    customer_properties = []
+    with open(file_path, 'r') as file:
+        reader = csv.DictReader(file, delimiter=';')
+        for row in reader:
+            customer_properties.append(CustomerProperties(row['customer_id'], 
+                                                         int(row['step_seconds']), 
+                                                         int(row['picking_offset'])))
+    return customer_properties
+
+class ArticlePickingTime:
+    def __init__(self, article_id, article_name, first_pick, second_pick, third_pick, fourth_pick, fifth_more_pick):
+        self.article_id = article_id
+        self.article_name = article_name
+        self.first_pick = first_pick
+        self.second_pick = second_pick
+        self.third_pick = third_pick
+        self.fourth_pick = fourth_pick
+        self.fifth_more_pick = fifth_more_pick
+
+def parse_articles_picking_time(file_path):
+    articles_picking_time = []
+    with open(file_path, 'r') as file:
+        reader = csv.DictReader(file, delimiter=';')
+        for row in reader:
+            articles_picking_time.append(ArticlePickingTime(row['article_id'], row['article_name'],
+                                                           int(row['first_pick']), int(row['second_pick']),
+                                                           int(row['third_pick']), int(row['fourth_pick']),
+                                                           int(row['fifth_more_pick'])))
+    return articles_picking_time
+
+
+class Ticket:
+    def __init__(self, enter_date_time, customer_id, article_id, quantity, ticket_id):
+        self.enter_date_time = enter_date_time
+        self.customer_id = customer_id
+        self.article_id = article_id
+        self.quantity = quantity
+        self.ticket_id = ticket_id
+
+def parse_tickets(file_path):
+    tickets = []
+    with open(file_path, 'r') as file:
+        reader = csv.DictReader(file, delimiter=';')
+        for row in reader:
+            tickets.append(Ticket(row['enter_date_time'], row['customer_id'], 
+                                  row['article_id'], int(row['quantity']), 
+                                  row['ticket_id']))
+    return tickets
+
+# Assuming the above class and parser definitions are here
+
+def get_product_locations(tickets, planogram_data):
+    customer_product_locations = {}
+    for ticket in tickets:
+        customer_id = ticket.customer_id
+        product_id = ticket.article_id
+
+        # Initialize the list for the customer if it's their first product
+        if customer_id not in customer_product_locations:
+            customer_product_locations[customer_id] = []
+
+        # Find the product location and add it to the customer's list
+        for item in planogram_data:
+            if item.description == product_id:
+                customer_product_locations[customer_id].append((item.picking_x, item.picking_y))
+                break
+        else:
+            print("Product {} not found in planogram data".format(product_id))
+            raise Exception("Product {} not found in planogram data".format(product_id))
+
+    return customer_product_locations
+
+from search import a_star_search
+
+def compute_all_pairs_shortest_paths(planogram_data, product_locations):
+    # Prepare the grid based on planogram_data
+    # 0 for open space, 1 for walls or obstacles
+    # This grid should be constructed based on your planogram data layout
+    grid_width = max([item.x for item in planogram_data]) + 1
+    grid_height = max([item.y for item in planogram_data]) + 1
+    grid = [[0 for _ in range(grid_height)] for _ in range(grid_width)]
+    start = None
+    ends = []
+    for item in planogram_data:
+        if item.description != 'paso':
+            grid[item.x][item.y] = 1
+        if item.description == 'paso-entrada':
+            start = (item.x, item.y)
+        elif item.description == 'paso-salida':
+            ends.append((item.x, item.y))
+    
+    product_locations = [start] + product_locations + ends
+
+    all_pairs_shortest_paths = {}
+    for start in product_locations:
+        all_pairs_shortest_paths[start] = {}
+        for goal in product_locations:
+            if start != goal:
+                path = a_star_search(grid, start, goal)
+                if not path:
+                    print("No path found from {} to {}".format(start, goal))
+                    raise Exception("No path found from {} to {}".format(start, goal))
+                all_pairs_shortest_paths[start][goal] = path
+
+    return all_pairs_shortest_paths, start, ends
+
+def build_distance_matrix(all_pairs_shortest_paths, product_locations):
+    # Initialize the distance matrix with zeros
+    n = len(product_locations)
+    distance_matrix = [[0 for _ in range(n)] for _ in range(n)]
+
+    # Map each product location to an index
+    location_to_index = {loc: index for index, loc in enumerate(product_locations)}
+
+    # Fill the distance matrix
+    for start_location, paths in all_pairs_shortest_paths.items():
+        start_index = location_to_index[start_location]
+        for end_location, path in paths.items():
+            end_index = location_to_index[end_location]
+            # The distance is the length of the path minus 1 (as the path includes both start and end)
+            distance_matrix[start_index][end_index] = len(path) - 1
+
+    return distance_matrix
+
+def main():
+    # Base directory for data files
+    base_dir = './data/'
+
+    # Paths to the data files, now relative to the 'data' directory
+    planogram_file_path = base_dir + 'planogram_table.csv'
+    customer_properties_file_path = base_dir + 'hackathon_customers_properties.csv'
+    articles_picking_time_file_path = base_dir + 'hackathon_article_picking_time.csv'
+    tickets_file_path = base_dir + 'hackathon_tickets.csv'
+
+    # Load the data using the parsers
+    planogram_data = parse_planogram(planogram_file_path)
+    customer_properties = parse_customer_properties(customer_properties_file_path)
+    articles_picking_time = parse_articles_picking_time(articles_picking_time_file_path)
+    tickets = parse_tickets(tickets_file_path)
+
+    # For demonstration, let's print the first few entries of each dataset
+    # print("Planogram Data Sample:")
+    # for item in planogram_data[:3]:
+    #     print(vars(item))
+
+    # print("\nCustomer Properties Sample:")
+    # for item in customer_properties[:3]:
+    #     print(vars(item))
+
+    # print("\nArticles Picking Time Sample:")
+    # for item in articles_picking_time[:3]:
+    #     print(vars(item))
+
+    # print("\nTickets Sample:")
+    # for item in tickets[:3]:
+    #     print(vars(item))
+
+    customers_product_locations = get_product_locations(tickets, planogram_data)
+
+    # Calculate shortest paths
+    for customer_id, locations in customers_product_locations.items():
+        all_pairs_shortest_paths, start, ends = compute_all_pairs_shortest_paths(planogram_data, locations)
+        distance_matrix = build_distance_matrix(all_pairs_shortest_paths, locations)
+        
+        # Assuming you have a distance_matrix from the previous steps
+        tsp_route = solve_tsp_with_or_tools(distance_matrix)
+        print('TSP Route:', tsp_route)
+        break
+
+
+
+
+
+if __name__ == "__main__":
+    main()
