@@ -127,7 +127,15 @@ async function calculateFirstcustomerSec() {
         customerTickets.set(color, key)
         customerColor.set(key, color)
         value = sortRouteByTime(value);
+        tickets.set(key, value);
         const firstSecond = (+value[0].sec);
+        const lastSecond = (+value[value.length - 1].sec);
+        const duration = lastSecond - firstSecond;
+        setDuration(key, duration);
+    }
+    for (let [key, value] of tickets) {
+        const color = customerColor.get(key);
+        let firstSecond = (+value[0].sec);
         const locations = calcWaypoints(value);
         await drawRouteAfterSeconds(locations, firstSecond, color);
     }
@@ -469,6 +477,17 @@ function setState(ticket_id, state) {
     for( let i = 0; i < tableData.length; i++){
         if ( tableData[i].ticketsNre === ticket_id) {
             tableData[i].state = states[state];
+            break;
+        }
+    }
+    setDataTable(tableData);
+}
+
+function setDuration(ticket_id, time) {
+    console.log(ticket_id, time);
+    for( let i = 0; i < tableData.length; i++){
+        if ( tableData[i].ticketsNre === ticket_id) {
+            tableData[i].duration = time;
             break;
         }
     }
