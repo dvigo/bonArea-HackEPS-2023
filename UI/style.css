@@ -160,3 +160,14 @@ h1 {
     background-color: #c1d0eb;
     color: #001780;
   }
+
+  .logo {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-image: url("img/logo.jpeg");
+    background-repeat: no-repeat;
+    background-size: contain;
+    height: 500px;
+    width: 500px;
+  }
