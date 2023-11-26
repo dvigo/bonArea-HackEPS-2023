@@ -65,7 +65,7 @@ h1 {
 }
 
 .file-label {
-    background-color: #007bff;
+    background-color: #001780;
     color: #fff;
     border: none;
     border-radius: 4px;
@@ -75,7 +75,7 @@ h1 {
 }
 
 .file-label:hover {
-    background-color: #0056b3;
+    background-color: #96a7cd;
 }
 
 .file-name {
@@ -94,7 +94,7 @@ h1 {
     height: 3em;
     font-size: 16px;
     font-weight: 900;
-    background-color: #007bff;
+    background-color: #001780;
     color: #fff;
     border: none;
     border-radius: 4px;
@@ -103,7 +103,8 @@ h1 {
   }
   
   .divSpeed button:hover {
-    background-color: #0056b3;
+    background-color: #c1d0eb;
+    color: #001780;
   }
 
 
@@ -111,7 +112,7 @@ h1 {
   .sidebar {
     width: 80%;
     height: 100vh;
-    background-color: #f2f2f2;
+    background-color: #f6f7f7;
     position: fixed;
     top: 0;
     left: -80%;
@@ -128,7 +129,7 @@ h1 {
     position: absolute;
     top: 10px;
     right: 10px;
-    background-color: #007bff;
+    background-color: #001780;
     color: #fff;
     border: none;
     border-radius: 4px;
@@ -138,14 +139,15 @@ h1 {
   }
 
   .close-sidebar-button:hover {
-    background-color: #0056b3;
+    background-color: #c1d0eb;
+    color: #001780;
   }
 
   .open-sidebar-button {
     position: fixed;
     top: 10px;
     right: 10px;
-    background-color: #007bff;
+    background-color: #001780;
     color: #fff;
     border: none;
     border-radius: 4px;
@@ -155,5 +157,6 @@ h1 {
   }
 
   .open-sidebar-button:hover {
-    background-color: #0056b3;
+    background-color: #c1d0eb;
+    color: #001780;
   }

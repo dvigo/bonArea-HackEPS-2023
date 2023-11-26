@@ -38,7 +38,7 @@ class RandomDataTable extends HTMLElement {
                 }
 
                 th {
-                    background-color: #4CAF50;
+                    background-color: #ff7500;
                     color: white;
                     font-size: 18px;
                 }
