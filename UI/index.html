@@ -15,6 +15,7 @@
 	
 
 	<div class="container">
+		<button id="openSidebarButton" class="open-sidebar-button">Mostrar Datos</button>
 		<span>
 			<h1>Contador de Tiempo</h1>
 			<div class="timer" id="timer">00:00:00</div>
@@ -38,7 +39,11 @@
 		<canvas id="supermarket">
 			Your browser does not support the HTML canvas tag.</canvas>
 	</div>
-	<random-data-table></random-data-table>
+
+	<div class="sidebar" id="sidebar">
+		<button id="closeSidebarButton" class="close-sidebar-button">X</button>
+		<random-data-table></random-data-table>
+	  </div>
 	<script src="script.js"></script>
 	<script type="module" src="random-data-table.js"></script>
 </body>

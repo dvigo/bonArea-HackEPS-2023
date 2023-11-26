@@ -45,6 +45,27 @@ function until(conditionFunction) {
     return new Promise(poll);
 }
 
+/**
+ * Open SideBar
+ */
+const openSidebarButton = document.getElementById('openSidebarButton');
+const closeSidebarButton = document.getElementById('closeSidebarButton');
+const sidebar = document.getElementById('sidebar');
+
+openSidebarButton.addEventListener('click', () => {
+    sidebar.classList.add('open');
+});
+
+closeSidebarButton.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+});
+
+document.addEventListener('click', (event) => {
+    if (!sidebar.contains(event.target) && event.target !== openSidebarButton) {
+      sidebar.classList.remove('open');
+    }
+});
+
 const fileInput = document.getElementById('fileInput');
 const fileNameElement = document.getElementById('fileName');
 document.getElementById('fileInput').addEventListener('change', readFile, false);

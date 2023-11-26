@@ -105,3 +105,55 @@ h1 {
   .divSpeed button:hover {
     background-color: #0056b3;
   }
+
+
+
+  .sidebar {
+    width: 80%;
+    height: 100vh;
+    background-color: #f2f2f2;
+    position: fixed;
+    top: 0;
+    left: -80%;
+    transition: left 0.3s ease;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    z-index: 1;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  .close-sidebar-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  .close-sidebar-button:hover {
+    background-color: #0056b3;
+  }
+
+  .open-sidebar-button {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  .open-sidebar-button:hover {
+    background-color: #0056b3;
+  }
