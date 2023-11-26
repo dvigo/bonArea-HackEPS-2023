@@ -170,10 +170,6 @@ def build_distance_matrix_for_end(all_pairs_shortest_paths, locations, start, en
 
 def find_optimal_route_with_ends(customers_product_locations, planogram_data):
     best_routes = {}
-    c9 = customers_product_locations['c9']
-    customers_product_locations = {
-        'c9': c9,
-    }
     for customer_id, locations in customers_product_locations.items():
         # Calculate shortest paths for all items and potential ends
         all_pairs_shortest_paths, start, ends = compute_all_pairs_shortest_paths(planogram_data, locations)
@@ -295,22 +291,26 @@ def generate_output_rows(best_routes, customer_properties: [CustomerProperties],
                 if article_pick_time:
                     # Adjust time at position based on the number of items picked
                     quantity = next((ticket.quantity for ticket in customer_tickets if ticket.article_id == article_id), 1)
+                    time_at_position += customer_prop.picking_offset * quantity
                     time_at_position += sum([article_pick_time.first_pick, 
                                              *(article_pick_time.second_pick for _ in range(1, min(quantity, 2))),
                                              *(article_pick_time.third_pick for _ in range(2, min(quantity, 3))),
                                              *(article_pick_time.fourth_pick for _ in range(3, min(quantity, 4))),
                                              *(article_pick_time.fifth_more_pick for _ in range(4, quantity))])
-            else:
-                # User is moving to this position
-                time_at_position = customer_prop.step_seconds
+                    print(f'Customer {customer_id} picked {quantity} of {article_id} at ({x}, {y}) for {time_at_position} seconds')
 
             # Create an OutputRow for each second spent at the current position
             for _ in range(time_at_position):
                 output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, x, y, picking, current_time))
                 current_time += timedelta(seconds=1)
+            picking = 0
+            for _ in range(customer_prop.step_seconds):
+                output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, x, y, picking, current_time))
+                current_time += timedelta(seconds=1)
         x_checkout = x
         y_checkout = y
-        time_checkout = total_quantity * 5 + customer_prop.step_seconds
+        time_checkout = total_quantity * 5
+        print(f'Customer {customer_id} checked out {total_quantity} items at ({x_checkout}, {y_checkout}) for {time_checkout} seconds')
         for _ in range(time_checkout):
             output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, x_checkout, y_checkout, 0, current_time))
             current_time += timedelta(seconds=1)
