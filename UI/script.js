@@ -45,7 +45,9 @@ function until(conditionFunction) {
     return new Promise(poll);
 }
 
-document.getElementById('filePicker').addEventListener('change', readFile, false);
+const fileInput = document.getElementById('fileInput');
+const fileNameElement = document.getElementById('fileName');
+document.getElementById('fileInput').addEventListener('change', readFile, false);
 document.getElementById('speed_text').innerHTML = "Velocidad Actual: " + speedText;
 
 const planogramFile = 'http://127.0.0.1:8000/data/planogram_table.csv';
@@ -66,6 +68,11 @@ function readFile(e) {
     var file = e.target.files[0];
     if (!file) {
         return;
+    }
+    if (file) {
+        fileNameElement.textContent = file.name;
+    } else {
+        fileNameElement.textContent = '';
     }
     var reader = new FileReader();
     reader.onload = function (e) {
@@ -448,7 +455,7 @@ function hexToRGB(hex, alpha) {
 }
 
 async function updateTime() {
-    let id = "current-time";
+    let id = "timer";
     let element = document.getElementById(id);
     let d = new Date(0);
     d.setHours(9 + 1); // +1 due to timezone
@@ -462,7 +469,7 @@ async function updateTime() {
     for(let i = 0; i < Infinity; i++) {
         currentTime += 1;
         d.addSeconds(1);
-        element.innerHTML = "Tiempo actual: " + currentTime + " - " + d.toISOString().substr(11, 8);
+        element.innerHTML = d.toISOString().substr(11, 8);
         
         await sleep(speedValue);
     }

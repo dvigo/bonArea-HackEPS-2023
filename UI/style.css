@@ -1,17 +1,18 @@
 body {
-	display: flex;
-	align-items: center;
-	flex-direction: column;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
 }
+
 #container {
-	border-top: 4px solid rgba(123, 194, 194, 0.500);
+    border-top: 4px solid rgba(123, 194, 194, 0.500);
     border-left: 4px solid rgba(123, 194, 194, 0.500);
     border-right: 4px solid rgba(123, 194, 194, 0.500);
-	width: 1880px;
-	height: 800px;
-	background-image: url("img/planogram_image.svg");
-	background-repeat: no-repeat;
-	background-size: 1880px 800px;
+    width: 1880px;
+    height: 800px;
+    background-image: url("img/planogram_image.svg");
+    background-repeat: no-repeat;
+    background-size: 1880px 800px;
 }
 
 .divSpeed {
@@ -26,3 +27,81 @@ body {
     font-size: 16px;
     font-weight: 900;
 }
+
+body {
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    text-align: center;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.container > span {
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: block;
+    margin-bottom: 20px;
+    margin: 20px;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.timer {
+    font-size: 48px;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.file-input {
+    display: none;
+}
+
+.file-label {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.file-label:hover {
+    background-color: #0056b3;
+}
+
+.file-name {
+    margin-top: 10px;
+    color: #333;
+}
+
+.divSpeed {
+    display: flex;
+    width: 20em;
+    justify-content: space-around;
+  }
+  
+  .divSpeed button {
+    width: 3em;
+    height: 3em;
+    font-size: 16px;
+    font-weight: 900;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .divSpeed button:hover {
+    background-color: #0056b3;
+  }

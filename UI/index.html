@@ -12,17 +12,26 @@
 
 	<h1>ROCC: Recorrido Óptimo para Completar la Compra.</h1>
 
-	<div>Carga tu archivo CSV aquí:
-		<input type="file" name="filePicker" id="filePicker" size="24" accept='.csv' alt="" />
+	
+
+	<div class="container">
+		<span>
+			<h1>Contador de Tiempo</h1>
+			<div class="timer" id="timer">00:00:00</div>
+			<div class="divSpeed">
+				<button type="button" onclick="modifySpeed('remove')"> - </button>
+				<p id="speed_text"></p>
+				<button type="button" onclick="modifySpeed('add')"> + </button>
+			</div>
+		</span>
+		<span>
+			<h1>Subida de Archivo</h1>
+			<input type="file" name="fileInput" id="fileInput" class="file-input" size="24" accept='.csv' alt="" />
+			<label for="fileInput" class="file-label">Seleccionar Archivo</label>
+			<div id="fileName" class="file-name"></div>
+		</span>
 	</div>
 
-	<div class="divSpeed">
-		<button type="button" onclick="modifySpeed('remove')"> - </button>
-		<p id="speed_text"></p>
-		<button type="button" onclick="modifySpeed('add')"> + </button>
-	</div>
-
-	<div id="current-time">Current time</div>
 	<p>Plano de la tienda.</p>
 
 	<div id="container">
