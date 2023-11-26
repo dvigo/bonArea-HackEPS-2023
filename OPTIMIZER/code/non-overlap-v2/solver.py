@@ -205,8 +205,8 @@ def find_optimal_route_with_ends(customers_product_locations, planogram_data):
         print(f'Best route for Customer {customer_id}:', best_route, best_route_length)
         print('Pick at steps:', pick_at_steps)
         best_routes[customer_id] = best_route, pick_at_steps
-        if len(best_routes) == 30:
-            return best_routes
+        # if len(best_routes) == 30:
+        #     return best_routes
     print('Number of customers:', len(best_routes))
     return best_routes
 
