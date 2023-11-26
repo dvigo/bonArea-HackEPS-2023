@@ -118,19 +118,23 @@ def get_product_locations(tickets, planogram_data):
 
 from search import a_star_search
 
-def compute_all_pairs_shortest_paths(planogram_data, product_locations):
+def generate_grid(planogram_data):
     # Prepare the grid based on planogram_data
     # 0 for open space, 1 for walls or obstacles
     # This grid should be constructed based on your planogram data layout
     grid_width = max([item.x for item in planogram_data]) + 1
     grid_height = max([item.y for item in planogram_data]) + 1
     grid = [[0 for _ in range(grid_height)] for _ in range(grid_width)]
-    start_p = None
-    ends = []
     for item in planogram_data:
         if item.description not in ['paso', 'paso-entrada', 'paso-salida']:
             grid[item.x][item.y] = 1
+    return grid
 
+def compute_all_pairs_shortest_paths(planogram_data, product_locations):
+    grid = generate_grid(planogram_data)
+    start_p = None
+    ends = []
+    for item in planogram_data:
         if item.description == 'paso-entrada':
             start_p = (item.x, item.y)
         elif item.description == 'paso-salida':
@@ -170,6 +174,7 @@ def build_distance_matrix_for_end(all_pairs_shortest_paths, locations, start, en
 
 def find_optimal_route_with_ends(customers_product_locations, planogram_data):
     best_routes = {}
+    occupied_at_time = {}
     for customer_id, locations in customers_product_locations.items():
         # Calculate shortest paths for all items and potential ends
         all_pairs_shortest_paths, start, ends = compute_all_pairs_shortest_paths(planogram_data, locations)
@@ -200,7 +205,7 @@ def find_optimal_route_with_ends(customers_product_locations, planogram_data):
         print(f'Best route for Customer {customer_id}:', best_route, best_route_length)
         print('Pick at steps:', pick_at_steps)
         best_routes[customer_id] = best_route, pick_at_steps
-        if len(best_routes) == 10:
+        if len(best_routes) == 30:
             return best_routes
     print('Number of customers:', len(best_routes))
     return best_routes
@@ -267,22 +272,138 @@ def parse_datetime(datetime_str):
 
 def generate_output_rows(best_routes, customer_properties: [CustomerProperties], articles_picking_time: [ArticlePickingTime], tickets, planogram_data):
     output_rows = []
+    is_filled = {}
+    customers_not_completed = set(best_routes.keys())
+    customer_waiting_until = {
+        customer_id: min(parse_datetime(ticket.enter_date_time) for ticket in tickets if ticket.customer_id == customer_id)
+        for customer_id in best_routes
+    }
 
-    for customer_id, (path, pick_at_steps) in best_routes.items():
-        # Find the customer's properties and ticket info
-        customer_prop = next((cp for cp in customer_properties if cp.customer_id == customer_id), None)
-        customer_tickets = [t for t in tickets if t.customer_id == customer_id]
+    def is_filled_at(x, y, time, into_future):
+        for i in range(into_future):
+            if is_filled.get((x, y, time + timedelta(seconds=i)), False):
+                return True
+        return False
+    def generate_grid_filled_at(time):
+        grid = generate_grid(planogram_data)
+        for cx in range(len(grid)):
+            for cy in range(len(grid[0])):
+                if is_filled_at(cx, cy, time, 1):
+                    grid[cx][cy] = 1
+        return grid
+    start_pos = [
+        (item.x, item.y) for item in planogram_data if item.description == 'paso-entrada'
+    ][0]
+    checkout_pos = set([
+        (item.x, item.y) for item in planogram_data if item.description == 'paso-salida'
+    ])
+    current_time = min(parse_datetime(ticket.enter_date_time) for ticket in tickets)
+    customer_pick_at = {
+        customer_id: best_routes[customer_id][1]
+        for customer_id in best_routes
+    }
+    customer_pick_at = {
+        customer_id: list(map(lambda x: best_routes[customer_id][0][x], customer_pick_at[customer_id]))
+        for customer_id in customer_pick_at
+    }
+    positions = {
+        customer_id: None
+        for customer_id in best_routes
+    }
+    customer_path = {
+        customer_id: None
+        for customer_id in best_routes
+    }
 
-        total_quantity = sum(ticket.quantity for ticket in customer_tickets)
-        # Initialize the start time from the ticket entry time
-        current_time = min(parse_datetime(ticket.enter_date_time) for ticket in customer_tickets)
 
-        for i, (x, y) in enumerate(path):
-            # Check if the current position is a picking location and identify the item
+    while customers_not_completed:
+        can_move_now = []
+        for customer_id in customers_not_completed:
+            if customer_waiting_until[customer_id] <= current_time:
+                can_move_now.append(customer_id)
+        if can_move_now:
+            print(f'Customers {can_move_now} can move now')
+            print(f'Current time is {current_time}')
+            # input('Debug')
+        for customer_id in can_move_now:
+            customer_tickets = [ticket for ticket in tickets if ticket.customer_id == customer_id]
+            customer_prop = next((prop for prop in customer_properties if prop.customer_id == customer_id), None)
+            time_forward = current_time
+            if positions[customer_id] is None:
+                if is_filled_at(start_pos[0], start_pos[1], current_time, 1):
+                    continue
+            
+                grid = generate_grid(planogram_data)
+                customer_path[customer_id] = [0] + a_star_search(grid, start_pos, customer_pick_at[customer_id][0])[::-1]
+                assert customer_path[customer_id] is not False
+                next_pos = start_pos
+                print(f'Customer {customer_id} path is {customer_path[customer_id]}')
+            else:
+                current_pos = positions[customer_id]
+                path = customer_path[customer_id]
+                if len(path) == 0:
+                    if len(customer_pick_at[customer_id]) == 0:
+                        available_exits = [exit for exit in checkout_pos if not is_filled_at(exit[0], exit[1], current_time, 1)]
+                        if len(available_exits) == 0:
+                            # pick a random exit
+                            next_target = list(checkout_pos)[0]
+                        else:
+                            next_target = available_exits[0]
+                        grid = generate_grid_filled_at(current_time)
+                        new_path = a_star_search(grid, current_pos, next_target)
+                        if new_path is False:
+                            # WAIT
+                            print(f'Customer (d) {customer_id} waiting at ({current_pos[0]}, {current_pos[1]})')
+                            for _ in range(customer_prop.step_seconds):
+                                output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, current_pos[0], current_pos[1], 0, time_forward))
+                                is_filled[(current_pos[0], current_pos[1], time_forward)] = True
+                                time_forward += timedelta(seconds=1)
+                            customer_waiting_until[customer_id] = time_forward
+                            continue
+                        new_path = new_path[::-1]
+                        customer_path[customer_id] = new_path
+                        path = new_path
+                    else:
+                        next_target = customer_pick_at[customer_id][0]
+                        print(f'Customer {customer_id} at ({current_pos[0]}, {current_pos[1]}) going to {next_target}')
+                        grid = generate_grid_filled_at(current_time)
+                        new_path = a_star_search(grid, current_pos, next_target)
+                        if new_path is False:
+                            # WAIT
+                            print(f'Customer (a) {customer_id} waiting at ({current_pos[0]}, {current_pos[1]})')
+                            for _ in range(customer_prop.step_seconds):
+                                output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, current_pos[0], current_pos[1], 0, time_forward))
+                                is_filled[(current_pos[0], current_pos[1], time_forward)] = True
+                                time_forward += timedelta(seconds=1)
+                            customer_waiting_until[customer_id] = time_forward
+                            continue
+                        new_path = new_path[::-1]
+                        customer_path[customer_id] = new_path
+                        path = new_path
+                next_pos = path[0]
+                print(f'New pos is {next_pos}')
+                assert next_pos != current_pos
+                if is_filled_at(next_pos[0], next_pos[1], current_time, 1):
+                    grid = generate_grid_filled_at(current_time)
+                    new_path = a_star_search(grid, current_pos, customer_pick_at[customer_id][0])
+                    if new_path is False:
+                        # WAIT
+                        print(f'Customer (b) {customer_id} waiting at ({current_pos[0]}, {current_pos[1]})')
+                        for _ in range(customer_prop.step_seconds):
+                            output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, current_pos[0], current_pos[1], 0, time_forward))
+                            is_filled[(current_pos[0], current_pos[1], time_forward)] = True
+                            time_forward += timedelta(seconds=1)
+                        customer_waiting_until[customer_id] = time_forward
+                        continue
+                    new_path = new_path[::-1]
+                    customer_path[customer_id] = new_path
+                    next_pos = new_path[0]
+            print(f'Customer {customer_id} moving from {positions[customer_id]} to {next_pos}')
+            # input('Debug2')
+            positions[customer_id] = next_pos
             picking = 0
             time_at_position = 0
-
-            if i in pick_at_steps:
+            if next_pos == customer_pick_at[customer_id][0] and not next_pos in checkout_pos:
                 # User is picking an item at this position
                 picking = 1
                 article_id = next((p.description for p in planogram_data if p.picking_x == x and p.picking_y == y), None)
@@ -297,24 +418,38 @@ def generate_output_rows(best_routes, customer_properties: [CustomerProperties],
                                              *(article_pick_time.third_pick for _ in range(2, min(quantity, 3))),
                                              *(article_pick_time.fourth_pick for _ in range(3, min(quantity, 4))),
                                              *(article_pick_time.fifth_more_pick for _ in range(4, quantity))])
-                    print(f'Customer {customer_id} picked {quantity} of {article_id} at ({x}, {y}) for {time_at_position} seconds')
-
+                    print(f'Customer (c) {customer_id} picked {quantity} of {article_id} at ({x}, {y}) for {time_at_position} seconds')
+                customer_pick_at[customer_id].pop(0)
             # Create an OutputRow for each second spent at the current position
+            x, y = next_pos
             for _ in range(time_at_position):
-                output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, x, y, picking, current_time))
-                current_time += timedelta(seconds=1)
+                print(f'Customer {customer_id} at ({x}, {y}) for {time_at_position} seconds')
+                output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, x, y, picking, time_forward))
+                is_filled[(x, y, time_forward)] = True
+                time_forward += timedelta(seconds=1)
             picking = 0
             for _ in range(customer_prop.step_seconds):
-                output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, x, y, picking, current_time))
-                current_time += timedelta(seconds=1)
-        x_checkout = x
-        y_checkout = y
-        time_checkout = total_quantity * 5
-        print(f'Customer {customer_id} checked out {total_quantity} items at ({x_checkout}, {y_checkout}) for {time_checkout} seconds')
-        for _ in range(time_checkout):
-            output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, x_checkout, y_checkout, 0, current_time))
-            current_time += timedelta(seconds=1)
-                
+                print(f'Customer {customer_id} stepping at ({x}, {y}) at {time_forward}')
+                output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, x, y, picking, time_forward))
+                is_filled[(x, y, time_forward)] = True
+                time_forward += timedelta(seconds=1)
+            customer_waiting_until[customer_id] = time_forward
+            if next_pos in checkout_pos:
+                assert picking == 0
+                print(f'Customer {customer_id} at checkout')
+                x_checkout = x
+                y_checkout = y
+                total_quantity = sum([ticket.quantity for ticket in customer_tickets])
+                time_checkout = total_quantity * 5
+                print(f'Customer {customer_id} checked out {total_quantity} items at ({x_checkout}, {y_checkout}) for {time_checkout} seconds')
+                for _ in range(time_checkout):
+                    output_rows.append(OutputRow(customer_id, customer_tickets[0].ticket_id, x_checkout, y_checkout, 0, time_forward))
+                    is_filled[(x_checkout, y_checkout, time_forward)] = True
+                    time_forward += timedelta(seconds=1)
+                customers_not_completed.remove(customer_id)
+            customer_path[customer_id].pop(0)
+        current_time += timedelta(seconds=1)
+
 
     # Sort the rows by x_y_date_time
     output_rows.sort(key=lambda row: row.x_y_date_time)

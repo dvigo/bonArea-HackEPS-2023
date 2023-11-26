@@ -165,6 +165,7 @@ async function calculateFirstcustomerSec() {
         const duration = lastSecond - firstSecond;
         setDuration(key, duration);
     }
+    console.log(customerColor);
     updateDataTable();
     for (let [key, value] of tickets) {
         const color = customerColor.get(key);
@@ -217,7 +218,17 @@ async function drawRoute(locationRoute, color) {
             }
             
             cleanLastPick(color);
-            if (point.picking == '1') pick(point.x, point.y, color);
+            if (point.picking == '1'){
+                x = (point.x / DIM) + 1;
+                y = (point.y / DIM) + 1;
+                let row = csvData.filter((row) => {
+                    return row.picking_x == x && row.picking_y == y;
+                });
+                if (row[0] == undefined) {
+                    console.log("Picking: " + point.picking + " X: " + point.x + " Y: " + point.y + " S: " + point.s + " T: " + point.t + " Ticket: " + point.ticket_id);
+                }
+                pick(point.x, point.y, color);
+            }
             ctxIconCustomer.drawImage(img, point.x, point.y, DIM, DIM);
 
             await until(() => { return currentTime >= point.s; });
@@ -430,7 +441,10 @@ function pick(x, y, color) {
     let row = csvData.filter((row) => {
         return row.picking_x == x && row.picking_y == y;
     });
-    
+    if (row[0] == undefined) {
+        console.log("Color: " + color + " X: " + x + " Y: " + y);
+        return;
+    }
     var dx = (row[0].x - 1) * DIM;
     var dy = (row[0].y - 1) * DIM;
     lastPick[color] = [dx, dy];
